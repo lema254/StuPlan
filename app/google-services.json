@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "287375412108",
+    "project_id": "stuplan-24a64",
+    "storage_bucket": "stuplan-24a64.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:287375412108:android:aeabc8da82ececa8c924a9",
+        "android_client_info": {
+          "package_name": "com.example.stuplan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVgbhrMeYfOR-5RbEo2kggrbJ7nStAel8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
