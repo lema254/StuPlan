@@ -108,9 +108,13 @@ fun SplashScreen(onSplashComplete: () -> Unit = {}) {
                 val nodeY = centerY + (node.y * 2 - 1) * size.height * 0.4f * scale
 
                 // Rotate the node position
-                val rotatedX = centerX + (nodeX - centerX) * cos(Math.toRadians(rotation.toDouble()).toFloat()) -
+                val rotatedX = centerX + (nodeX - centerX) * cos(
+                    Math.toRadians(rotation.toDouble()).toFloat()
+                ) -
                         (nodeY - centerY) * sin(Math.toRadians(rotation.toDouble()).toFloat())
-                val rotatedY = centerY + (nodeX - centerX) * sin(Math.toRadians(rotation.toDouble()).toFloat()) +
+                val rotatedY = centerY + (nodeX - centerX) * sin(
+                    Math.toRadians(rotation.toDouble()).toFloat()
+                ) +
                         (nodeY - centerY) * cos(Math.toRadians(rotation.toDouble()).toFloat())
 
                 // Draw lines to connections
@@ -120,9 +124,13 @@ fun SplashScreen(onSplashComplete: () -> Unit = {}) {
                     val targetY = centerY + (targetNode.y * 2 - 1) * size.height * 0.4f * scale
 
                     // Rotate the target position
-                    val rotatedTargetX = centerX + (targetX - centerX) * cos(Math.toRadians(rotation.toDouble()).toFloat()) -
+                    val rotatedTargetX = centerX + (targetX - centerX) * cos(
+                        Math.toRadians(rotation.toDouble()).toFloat()
+                    ) -
                             (targetY - centerY) * sin(Math.toRadians(rotation.toDouble()).toFloat())
-                    val rotatedTargetY = centerY + (targetX - centerX) * sin(Math.toRadians(rotation.toDouble()).toFloat()) +
+                    val rotatedTargetY = centerY + (targetX - centerX) * sin(
+                        Math.toRadians(rotation.toDouble()).toFloat()
+                    ) +
                             (targetY - centerY) * cos(Math.toRadians(rotation.toDouble()).toFloat())
 
                     drawLine(
@@ -140,9 +148,13 @@ fun SplashScreen(onSplashComplete: () -> Unit = {}) {
                 val nodeY = centerY + (node.y * 2 - 1) * size.height * 0.4f * scale
 
                 // Rotate the node position
-                val rotatedX = centerX + (nodeX - centerX) * cos(Math.toRadians(rotation.toDouble()).toFloat()) -
+                val rotatedX = centerX + (nodeX - centerX) * cos(
+                    Math.toRadians(rotation.toDouble()).toFloat()
+                ) -
                         (nodeY - centerY) * sin(Math.toRadians(rotation.toDouble()).toFloat())
-                val rotatedY = centerY + (nodeX - centerX) * sin(Math.toRadians(rotation.toDouble()).toFloat()) +
+                val rotatedY = centerY + (nodeX - centerX) * sin(
+                    Math.toRadians(rotation.toDouble()).toFloat()
+                ) +
                         (nodeY - centerY) * cos(Math.toRadians(rotation.toDouble()).toFloat())
 
                 drawCircle(
@@ -192,18 +204,6 @@ fun SplashScreen(onSplashComplete: () -> Unit = {}) {
             }
         }
 
-        // App name or logo could go here if desired
-        /*
-        Text(
-            text = "StudyPlanner",
-            color = accentColor,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 40.dp)
-        )
-        */
     }
 }
 

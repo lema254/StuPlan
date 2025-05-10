@@ -1,24 +1,19 @@
 package com.example.stuplan.models
 
-data class UserViewModel(
-    val userId: String = "",
+data class User(
+    val uid: String = "",
+    val username: String = "",
     val displayName: String = "",
-    val email: String = "",
-    val photoUrl: String? = null,
     val bio: String = "",
-    val completedSections: Int = 0,
-    val totalSections: Int = 0,
-    val joinDate: Long = System.currentTimeMillis(),
-    val interests: List<String> = emptyList(),
-    val academicLevel: String = "",
-    val preferredSubjects: List<String> = emptyList(),
-    val notificationSettings: NotificationSettings = NotificationSettings(),
-    val themePreference: String = "system" // system, light, dark
-)
+    val profileImageUrl: String? = "",
+    val email: String = "",
+    val followers: Int = 0,
+    val following: Int = 0,
+    val posts: Int = 0,
+    val website: String = "",
+    val phoneNumber: String = "",
+    val phone: String = "",
+    val name: String,
+    var createdAt: Long = 0L
 
-data class NotificationSettings(
-    val enablePushNotifications: Boolean = true,
-    val enableEmailNotifications: Boolean = true,
-    val studyReminders: Boolean = true,
-    val newContentAlerts: Boolean = true
-)
+    )

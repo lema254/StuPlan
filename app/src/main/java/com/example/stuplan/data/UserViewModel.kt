@@ -1,155 +1,407 @@
-package com.example.stuplan.data
+package com.example.lema.data
 
-
-
-import androidx.compose.runtime.State
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import androidx.navigation.NavController
+import com.example.stuplan.models.UserModel
+import com.example.lema.util.validateEmail
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
-data class User(
-    val id: String = "",
-    val name: String = "",
-    val email: String = "",
-    val bio: String = "",
-    val photoUrl: String = "",
-    val academicLevel: String = "Intermediate"
-)
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
 class UserViewModel : ViewModel() {
-    // User data state
-    private val _user = mutableStateOf<User?>(null)
-    val user: State<User?> = _user
 
-    // Loading state
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading = _isLoading.asStateFlow()
+    private val auth = FirebaseAuth.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance()
 
-    // Error handling
-    private val _error = MutableStateFlow<String?>(null)
-    val error = _error.asStateFlow()
+    // State holders
+    val user = mutableStateOf<UserModel?>(null)
+    val isLoading = mutableStateOf(false)
+
+    init {
+        // Load user data when the ViewModel is initialized
+        loadUserData()
+    }
 
     /**
-     * Register a new user
+     * Load the current user's profile data from Firestore
      */
-    fun register(name: String, email: String, bio: String) {
+    fun loadUserData() {
+        val currentUser = auth.currentUser
+
+        if (currentUser == null) {
+            // User not logged in
+            user.value = null
+            return
+        }
+
         viewModelScope.launch {
             try {
-                _isLoading.value = true
+                isLoading.value = true
 
-                // In a real app, this would make an API call to register the user
-                // For now, we'll simulate success and create a local user object
+                val documentSnapshot = withContext(Dispatchers.IO) {
+                    firestore.collection("users")
+                        .document(currentUser.uid)
+                        .get()
+                        .await()
+                }
 
-                // Simulate network delay
-                kotlinx.coroutines.delay(1000)
+                if (documentSnapshot.exists()) {
+                    // User profile exists
+                    val userData = documentSnapshot.toObject(UserModel::class.java)
+                    userData?.userId = currentUser.uid
+                    user.value = userData
+                } else {
+                    // No profile created yet
+                    user.value = null
+                }
+            } catch (e: Exception) {
+                Log.e("UserViewModel", "Error loading user data: ${e.message}")
+                user.value = null
+            } finally {
+                isLoading.value = false
+            }
+        }
+    }
 
-                // Create user object
-                val newUser = User(
-                    id = generateRandomId(),
+    /**
+     * Create a new user profile
+     */
+    fun createUserProfile(
+        context: Context,
+        navController: NavController,
+        name: String,
+        email: String,
+        bio: String = "",
+        phoneNumber: String = "",
+        university: String = "",
+        imageUri: Uri? = null,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val currentUser = auth.currentUser
+
+        if (currentUser == null) {
+            onError("User not authenticated")
+            return
+        }
+
+        if (name.trim().isEmpty()) {
+            onError("Name is required")
+            return
+        }
+
+        if (email.trim().isEmpty() || !validateEmail(email)) {
+            onError("Valid email is required")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                isLoading.value = true
+
+                // Upload image if provided
+                val profileImageUrl = imageUri?.let { uploadImageToStorage(it) } ?: ""
+
+                // Create user model
+                val userModel = UserModel(
+                    userId = currentUser.uid,
                     name = name,
                     email = email,
                     bio = bio,
-                    academicLevel = "Beginner"
+                    phoneNumber = phoneNumber,
+                    university = university,
+                    profileImage = profileImageUrl
                 )
 
-                // Set the user in the ViewModel
-                _user.value = newUser
+                // Save to Firestore
+                withContext(Dispatchers.IO) {
+                    firestore.collection("users")
+                        .document(currentUser.uid)
+                        .set(userModel)
+                        .await()
+                }
 
-                // Clear any previous errors
-                _error.value = null
+                // Update local state
+                user.value = userModel
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Profile created successfully", Toast.LENGTH_SHORT).show()
+                    onSuccess()
+                    // Navigate back to profile view
+                    navController.navigate("view_profile") {
+                        popUpTo("edit_profile") { inclusive = true }
+                    }
+                }
             } catch (e: Exception) {
-                _error.value = e.message ?: "Registration failed"
+                Log.e("UserViewModel", "Error creating profile: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    val errorMsg = "Failed to create profile: ${e.localizedMessage}"
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                    onError(errorMsg)
+                }
             } finally {
-                _isLoading.value = false
+                isLoading.value = false
             }
         }
     }
 
     /**
-     * Update user profile information
+     * Update an existing user profile
      */
-    fun updateProfile(name: String, email: String, bio: String) {
+    fun updateProfile(
+        context: Context,
+        navController: NavController,
+        name: String,
+        email: String,
+        bio: String = "",
+        phoneNumber: String = "",
+        university: String = "",
+        imageUri: Uri? = null,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val currentUser = auth.currentUser
+        val currentUserData = user.value
+
+        if (currentUser == null || currentUserData == null) {
+            onError("User not authenticated or profile not loaded")
+            return
+        }
+
+        if (name.trim().isEmpty()) {
+            onError("Name is required")
+            return
+        }
+
+        if (email.trim().isEmpty() || !validateEmail(email)) {
+            onError("Valid email is required")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                _isLoading.value = true
+                isLoading.value = true
 
-                // Simulate network delay
-                kotlinx.coroutines.delay(1000)
+                // Upload new image if provided
+                val profileImageUrl = when {
+                    imageUri != null -> uploadImageToStorage(imageUri)
+                    currentUserData.profileImage?.isNotEmpty() == true -> currentUserData.profileImage
+                    else -> ""
+                }
 
-                // Update user object with new information
-                _user.value = _user.value?.copy(
+                // Create updated user model
+                val updatedUserModel = UserModel(
+                    userId = currentUser.uid,
                     name = name,
                     email = email,
-                    bio = bio
+                    bio = bio,
+                    phoneNumber = phoneNumber,
+                    university = university,
+                    profileImage = profileImageUrl
                 )
 
-                _error.value = null
+                // Update in Firestore
+                withContext(Dispatchers.IO) {
+                    firestore.collection("users")
+                        .document(currentUser.uid)
+                        .set(updatedUserModel)
+                        .await()
+                }
+
+                // Update local state
+                user.value = updatedUserModel
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                    onSuccess()
+                    // Navigate back to profile view
+                    navController.navigate("view_profile") {
+                        popUpTo("edit_profile") { inclusive = true }
+                    }
+                }
             } catch (e: Exception) {
-                _error.value = e.message ?: "Profile update failed"
+                Log.e("UserViewModel", "Error updating profile: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    val errorMsg = "Failed to update profile: ${e.localizedMessage}"
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                    onError(errorMsg)
+                }
             } finally {
-                _isLoading.value = false
+                isLoading.value = false
             }
         }
     }
 
     /**
-     * Login with email and password
+     * Delete the user's profile
      */
-    fun login(email: String, password: String) {
+    fun deleteProfile(
+        context: Context,
+        navController: NavController,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val currentUser = auth.currentUser
+
+        if (currentUser == null) {
+            onError("User not authenticated")
+            return
+        }
+
         viewModelScope.launch {
             try {
-                _isLoading.value = true
+                isLoading.value = true
 
-                // In a real app, this would validate credentials with a backend service
-                // For now, we'll simulate success and create a mock user
+                // Delete profile image from storage if exists
+                user.value?.profileImage?.let { imageUrl ->
+                    if (imageUrl.isNotEmpty()) {
+                        try {
+                            // Extract the path from the URL to delete from storage
+                            val storageRef = storage.getReferenceFromUrl(imageUrl)
+                            storageRef.delete().await()
+                        } catch (e: Exception) {
+                            Log.e("UserViewModel", "Error deleting profile image: ${e.message}")
+                            // Continue with profile deletion even if image deletion fails
+                        }
+                    }
+                }
 
-                // Simulate network delay
-                kotlinx.coroutines.delay(1000)
+                // Delete user document from Firestore
+                withContext(Dispatchers.IO) {
+                    firestore.collection("users")
+                        .document(currentUser.uid)
+                        .delete()
+                        .await()
+                }
 
-                // Create mock user object
-                val loggedInUser = User(
-                    id = generateRandomId(),
-                    name = "Alex Johnson", // Mock name
-                    email = email,
-                    bio = "Passionate programmer learning mobile development with Kotlin and Android.",
-                    academicLevel = "Intermediate"
-                )
+                // Clear local state
+                user.value = null
 
-                // Set the user in the ViewModel
-                _user.value = loggedInUser
-
-                _error.value = null
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Profile deleted successfully", Toast.LENGTH_SHORT).show()
+                    onSuccess()
+                    // Navigate to appropriate screen (maybe home or login)
+                    navController.navigate("home") {
+                        popUpTo("view_profile") { inclusive = true }
+                    }
+                }
             } catch (e: Exception) {
-                _error.value = e.message ?: "Login failed"
+                Log.e("UserViewModel", "Error deleting profile: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    val errorMsg = "Failed to delete profile: ${e.localizedMessage}"
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                    onError(errorMsg)
+                }
             } finally {
-                _isLoading.value = false
+                isLoading.value = false
             }
         }
     }
 
     /**
-     * Logout current user
+     * Upload an image to Firebase Storage
      */
-    fun logout() {
-        viewModelScope.launch {
-            _user.value = null
+    private suspend fun uploadImageToStorage(imageUri: Uri): String {
+        return withContext(Dispatchers.IO) {
+            try {
+                val filename = "profile_${UUID.randomUUID()}"
+                val storageRef = storage.reference.child("profile_images/$filename")
+
+                // Upload file
+                val uploadTask = storageRef.putFile(imageUri).await()
+
+                // Get download URL
+                storageRef.downloadUrl.await().toString()
+            } catch (e: Exception) {
+                Log.e("UserViewModel", "Image upload failed: ${e.message}")
+                throw e
+            }
         }
     }
 
     /**
-     * Check if a user is currently logged in
+     * Log out the current user
      */
-    fun isLoggedIn(): Boolean {
-        return _user.value != null
+    fun logOut(
+        context: Context,
+        navController: NavController
+    ) {
+        auth.signOut()
+        user.value = null
+        Toast.makeText(context, "Logged out successfully", Toast.LENGTH_SHORT).show()
+        navController.navigate("login") {
+            popUpTo("view_profile") { inclusive = true }
+        }
     }
 
     /**
-     * Helper function to generate a random ID
+     * Update profile image only
      */
-    private fun generateRandomId(): String {
-        return java.util.UUID.randomUUID().toString()
+    fun updateProfileImage(
+        context: Context,
+        imageUri: Uri,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        val currentUser = auth.currentUser
+        val currentUserData = user.value
+
+        if (currentUser == null || currentUserData == null) {
+            onError("User not authenticated or profile not loaded")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                isLoading.value = true
+
+                // Upload new image
+                val profileImageUrl = uploadImageToStorage(imageUri)
+
+                // Update only the profile image field
+                withContext(Dispatchers.IO) {
+                    firestore.collection("users")
+                        .document(currentUser.uid)
+                        .update("profileImage", profileImageUrl)
+                        .await()
+                }
+
+                // Update local state
+                user.value = currentUserData.copy(profileImage = profileImageUrl)
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Profile image updated", Toast.LENGTH_SHORT).show()
+                    onSuccess()
+                }
+            } catch (e: Exception) {
+                Log.e("UserViewModel", "Error updating profile image: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    val errorMsg = "Failed to update profile image: ${e.localizedMessage}"
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                    onError(errorMsg)
+                }
+            } finally {
+                isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Check if user is logged in
+     */
+    fun isUserLoggedIn(): Boolean {
+        return auth.currentUser != null
     }
 }

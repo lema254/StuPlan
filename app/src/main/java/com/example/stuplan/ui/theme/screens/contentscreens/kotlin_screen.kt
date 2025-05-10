@@ -179,7 +179,10 @@ fun KotlinScreen(navController: NavController) {
 
             when (selectedTabIndex) {
                 0 -> LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-                    items(kotlinModules) { ModuleCard(it) }
+                    items(kotlinModules) { ModuleCard(
+                        it,
+                        onClick = TODO()
+                    ) }
                     item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
                 1 -> LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {

@@ -108,7 +108,7 @@ fun DashboardScreen(navController: NavController) {
                     }) {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Profile",
+                            contentDescription = "profile",
                             tint = TextDark
                         )
                     }

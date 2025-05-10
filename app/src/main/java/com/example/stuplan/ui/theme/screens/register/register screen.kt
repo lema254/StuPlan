@@ -1,6 +1,7 @@
 package com.example.stuplan.ui.theme.screens.register
 
 
+import android.util.Patterns
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
@@ -35,6 +35,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -43,6 +44,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,10 +53,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -63,7 +65,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.stuplan.data.AuthViewModel
-import com.example.stuplan.data.UserViewModel
+
 
 // Define our theme colors to match the reference design
 val PrimaryOrange = Color(0xFFFF6B35)
@@ -75,7 +77,7 @@ val White = Color.White
 @Composable
 fun RegisterScreen(
     navController: NavController,
-    viewModel: UserViewModel = viewModel()
+
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -85,6 +87,9 @@ fun RegisterScreen(
     var termsAccepted by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val authViewModel: AuthViewModel = viewModel()
+    val context = LocalContext.current
+    val isLoading by authViewModel.isLoading.collectAsState()
+
 
     Scaffold(
         topBar = {
@@ -333,151 +338,167 @@ fun RegisterScreen(
                             )
                         }
 
-                        // Register button
+
                         Button(
                             onClick = {
-                                if (termsAccepted && password == confirmPassword) {
-                                    viewModel.register(name, email, bio)
-                                    navController.navigate("dashboard") {
-                                        popUpTo("register") { inclusive = true }
-                                    }
-                                }
+                                authViewModel.register(
+                                    name = name,
+                                    email = email,
+                                    password = password,
+                                    context = context,
+                                    navController = navController
+                                )
                             },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isLoading
+                        ) {
+                            Text(
+                                text = if (isLoading) "Registering..." else "Register",
+                                fontSize = 18.sp,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.padding(vertical = 4.dp))
+                        }
+                    }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Divider with "or" text
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Divider(
+                                modifier = Modifier.weight(1f),
+                                color = TextDark.copy(alpha = 0.2f)
+                            )
+                            Text(
+                                text = "  OR  ",
+                                fontSize = 14.sp,
+                                color = TextDark.copy(alpha = 0.6f)
+                            )
+                            Divider(
+                                modifier = Modifier.weight(1f),
+                                color = TextDark.copy(alpha = 0.2f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Social sign-up buttons
+                        Button(
+                            onClick = { /* Google sign-up */ },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
-                            shape = RoundedCornerShape(24.dp),
-                            enabled = name.isNotBlank() && email.isNotBlank() &&
-                                    password.isNotBlank() && confirmPassword.isNotBlank() &&
-                                    password == confirmPassword && termsAccepted
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = White
+                            ),
+                            shape = RoundedCornerShape(24.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                // Google icon placeholder
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(Color.Transparent)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Sign up with Google",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextDark
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Button(
+                            onClick = { /* GitHub sign-up */ },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = TextDark
+                            ),
+                            shape = RoundedCornerShape(24.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                // GitHub icon placeholder
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(Color.Transparent)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Sign up with GitHub",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = White
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Already have an account link
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Create Account",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = White
+                                text = "Already have an account?",
+                                fontSize = 14.sp,
+                                color = TextDark.copy(alpha = 0.8f)
                             )
+                            TextButton(onClick = { navController.navigate("login") }) {
+                                Text(
+                                    text = "Sign In",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryOrange
+                                )
+                            }
                         }
+
+                        // Additional spacing at the bottom
+                        Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
+            }
+        }
+        fun validateInputs(
+            firstname: String,
+            lastname: String,
+            email: String,
+            password: String
+        ): String? {
+            return when {
+                firstname.isBlank() || lastname.isBlank() || email.isBlank() || password.isBlank() ->
+                    "Please fill all fields"
 
-                Spacer(modifier = Modifier.height(24.dp))
+                !Patterns.EMAIL_ADDRESS.matcher(email).matches() ->
+                    "Invalid email address"
 
-                // Divider with "or" text
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Divider(
-                        modifier = Modifier.weight(1f),
-                        color = TextDark.copy(alpha = 0.2f)
-                    )
-                    Text(
-                        text = "  OR  ",
-                        fontSize = 14.sp,
-                        color = TextDark.copy(alpha = 0.6f)
-                    )
-                    Divider(
-                        modifier = Modifier.weight(1f),
-                        color = TextDark.copy(alpha = 0.2f)
-                    )
-                }
+                password.length < 6 ->
+                    "Password must be at least 6 characters"
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Social sign-up buttons
-                Button(
-                    onClick = { /* Google sign-up */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = White
-                    ),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        // Google icon placeholder
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(Color.Transparent)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Sign up with Google",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextDark
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = { /* GitHub sign-up */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = TextDark
-                    ),
-                    shape = RoundedCornerShape(24.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        // GitHub icon placeholder
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(Color.Transparent)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Sign up with GitHub",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = White
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Already have an account link
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Already have an account?",
-                        fontSize = 14.sp,
-                        color = TextDark.copy(alpha = 0.8f)
-                    )
-                    TextButton(onClick = { navController.navigate("login") }) {
-                        Text(
-                            text = "Sign In",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryOrange
-                        )
-                    }
-                }
-
-                // Additional spacing at the bottom
-                Spacer(modifier = Modifier.height(32.dp))
+                else -> null
             }
         }
     }
-}
+
+
+
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

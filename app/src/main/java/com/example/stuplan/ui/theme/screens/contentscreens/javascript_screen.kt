@@ -178,7 +178,10 @@ fun JavaScreen(navController: NavController) {
 
             when (selectedTabIndex) {
                 0 -> LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-                    items(javaModules) { ModuleCard(it) }
+                    items(javaModules) { ModuleCard(
+                        it,
+                        onClick = TODO()
+                    ) }
                     item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
                 1 -> LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
